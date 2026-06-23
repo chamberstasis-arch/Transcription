@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: transcripcionvideo-api
+    ports:
+      - "8000:8000"
+    environment:
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-base}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-}
+      LOCAL_MEDIA_DIR: ${LOCAL_MEDIA_DIR:-/code/audio_test}
+      TRANSCRIPTION_CHUNK_SECONDS: ${TRANSCRIPTION_CHUNK_SECONDS:-600}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      KEEP_TEMP_FILES: ${KEEP_TEMP_FILES:-false}
+    volumes:
+      - ./app:/code/app
+      - ./data:/code/data
+      - ./audio_test:/code/audio_test
+    working_dir: /code

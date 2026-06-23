@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.local
+
+# Local media and generated runtime data
+audio_test/*
+!audio_test/.gitkeep
+data/input/*
+data/output/*
+data/temp/*
+data/jobs/*
+!data/input/.gitkeep
+!data/output/.gitkeep
+!data/temp/.gitkeep
+!data/jobs/.gitkeep
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local Codex/agent workspace state
+.agents/
+.codex/
+skills-lock.json

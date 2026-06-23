@@ -1,0 +1,57 @@
+import type { JobStatus } from "./types";
+
+export function formatBytes(value?: number | null): string {
+  if (!value || value <= 0) return "-";
+
+  const units = ["B", "KB", "MB", "GB"];
+  let size = value;
+  let index = 0;
+
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index += 1;
+  }
+
+  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+export function formatDuration(value?: number | null): string {
+  if (value === undefined || value === null) return "-";
+
+  const total = Math.max(0, Math.floor(value));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+export function formatTimestamp(value?: number | null): string {
+  const total = Math.max(0, Number(value) || 0);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = Math.floor(total % 60);
+  const milliseconds = Math.round((total - Math.floor(total)) * 1000);
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
+}
+
+export function statusLabel(status?: JobStatus): string {
+  const labels: Record<JobStatus, string> = {
+    uploaded: "En cola",
+    processing: "Procesando",
+    completed: "Completado",
+    failed: "Falló",
+  };
+
+  return status ? labels[status] : "Idle";
+}
+
+export function statusClass(status?: JobStatus): string {
+  if (status === "completed") return "border-emerald-300 bg-emerald-50 text-emerald-700";
+  if (status === "processing" || status === "uploaded") return "border-cyan-300 bg-cyan-50 text-cyan-800";
+  if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-700";
+  return "border-slate-200 bg-white/70 text-slate-600";
+}
