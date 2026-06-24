@@ -3,6 +3,8 @@ import logging
 import os
 from pathlib import Path
 
+from app.services.cancellation import JobCancelled, clear_cancel, is_cancel_requested
+from app.services.events import bus
 from app.services.housekeeping import delete_job_artifacts
 from app.services.jobs import get_job, update_job
 from app.services.media import get_configured_chunk_seconds, inspect_media_file
@@ -17,6 +19,15 @@ logger = logging.getLogger("uvicorn.error")
 def process_job(job_id: str, stored_path: str):
     logger.info("iniciando job=%s path=%s", job_id, stored_path)
 
+    partial_segments: list[dict] = []
+
+    def emit_progress(stage: str, message: str, progress: int) -> None:
+        bus.publish(job_id, {"type": "progress", "stage": stage, "message": message, "progress": progress})
+
+    def ensure_active() -> None:
+        if is_cancel_requested(job_id):
+            raise JobCancelled()
+
     try:
         update_job(
             job_id,
@@ -27,6 +38,8 @@ def process_job(job_id: str, stored_path: str):
             result=None,
             error=None,
         )
+        emit_progress("preparing", "Preparando archivo", 10)
+        ensure_active()
 
         chunk_seconds = get_configured_chunk_seconds()
         media_info = inspect_media_file(stored_path, chunk_seconds)
@@ -46,24 +59,38 @@ def process_job(job_id: str, stored_path: str):
             progress=20,
             metadata=metadata,
         )
+        emit_progress("preparing", "Analizando audio", 20)
+
+        def on_segment(index: int, segment) -> None:
+            entry = {"index": index, "start": segment.start, "end": segment.end, "text": segment.text}
+            partial_segments.append(entry)
+            bus.publish(job_id, {"type": "segment", **entry})
+            ensure_active()  # cancela entre segmentos del chunk
 
         def update_chunk_progress(done: int, total: int) -> None:
             progress = 30 + round((done / total) * 55)
+            # Persistimos los parciales al cerrar cada chunk (acota la E/S) para que
+            # un cliente que se conecte tarde pueda recuperar el estado.
             update_job(
                 job_id,
                 stage="transcribing",
                 message=f"Transcribiendo fragmento {done}/{total}",
                 progress=progress,
+                partial_segments=list(partial_segments),
             )
+            emit_progress("transcribing", f"Transcribiendo fragmento {done}/{total}", progress)
             logger.info("job=%s chunk=%s/%s progreso=%s", job_id, done, total, progress)
+            ensure_active()  # cancela entre chunks
 
         result = transcribe_file(
             stored_path,
             work_dir=TEMP_DIR / job_id,
             on_unit_completed=update_chunk_progress,
+            on_segment=on_segment,
         )
 
         update_job(job_id, stage="writing", message="Guardando resultados", progress=90)
+        emit_progress("writing", "Guardando resultados", 90)
         logger.info("job=%s progreso=90", job_id)
 
         txt_path = OUTPUT_DIR / f"{job_id}.txt"
@@ -96,9 +123,22 @@ def process_job(job_id: str, stored_path: str):
             stage="completed",
             message="Transcripción completada",
             error=None,
+            partial_segments=None,
         )
+        bus.publish(job_id, {"type": "done", "status": "completed", "segment_count": len(segments)})
         _cleanup_after_job(job_id)
         logger.info("job=%s completado", job_id)
+    except JobCancelled:
+        logger.info("job=%s cancelado", job_id)
+        update_job(
+            job_id,
+            status="cancelled",
+            stage="cancelled",
+            message="Proceso cancelado",
+            error=None,
+        )
+        bus.publish(job_id, {"type": "cancelled", "status": "cancelled", "message": "Proceso cancelado"})
+        _cleanup_after_job(job_id)
     except Exception as e:
         logger.exception("error job=%s", job_id)
         update_job(
@@ -108,7 +148,10 @@ def process_job(job_id: str, stored_path: str):
             message="No se pudo completar la transcripción",
             error=str(e),
         )
+        bus.publish(job_id, {"type": "failed", "status": "failed", "message": "No se pudo completar la transcripción"})
         _cleanup_after_job(job_id)
+    finally:
+        clear_cancel(job_id)
 
 
 def _cleanup_after_job(job_id: str) -> None:
