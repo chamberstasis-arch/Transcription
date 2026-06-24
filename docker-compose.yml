@@ -3,9 +3,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: transcripcionvideo-api
+    container_name: transcriptor-api
+    # Bind configurable: usa 127.0.0.1 para exponer solo al túnel SSH local, o la
+    # IP de Tailscale del host. Default 0.0.0.0 mantiene el comportamiento previo.
     ports:
-      - "8000:8000"
+      - "${API_BIND_HOST:-0.0.0.0}:${API_PORT:-8000}:8000"
     environment:
       WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-base}
       WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
@@ -14,9 +16,17 @@ services:
       LOCAL_MEDIA_DIR: ${LOCAL_MEDIA_DIR:-/code/audio_test}
       TRANSCRIPTION_CHUNK_SECONDS: ${TRANSCRIPTION_CHUNK_SECONDS:-600}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-}
+      API_KEYS: ${API_KEYS:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-168}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-200}
       KEEP_TEMP_FILES: ${KEEP_TEMP_FILES:-false}
     volumes:
       - ./app:/code/app
       - ./data:/code/data
       - ./audio_test:/code/audio_test
+      - ./frontend/dist:/code/frontend/dist:ro
     working_dir: /code

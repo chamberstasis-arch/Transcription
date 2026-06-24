@@ -3,7 +3,7 @@ APP_HTML = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TranscripcionVideo</title>
+  <title>Transcriptor</title>
   <style>
     body {
       min-height: 100vh;
@@ -48,7 +48,7 @@ APP_HTML = """<!doctype html>
 </head>
 <body>
   <main>
-    <h1>TranscripcionVideo</h1>
+    <h1>Transcriptor</h1>
     <p>La interfaz React se ejecuta en el servidor de desarrollo de Vite.</p>
     <a href="http://localhost:5173/">Abrir frontend</a>
   </main>

@@ -24,6 +24,10 @@ data/jobs/*
 !data/temp/.gitkeep
 !data/jobs/.gitkeep
 
+# Modelo faster-whisper precargado (scripts/fetch_model.sh) y override local
+models/
+docker-compose.override.yml
+
 # OS/editor noise
 .DS_Store
 Thumbs.db
