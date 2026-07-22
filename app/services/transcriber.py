@@ -84,6 +84,7 @@ def transcribe_file(
     source_path: str | Path,
     work_dir: str | Path = DEFAULT_WORK_DIR,
     on_unit_completed: Optional[Callable[[int, int], None]] = None,
+    on_segment: Optional[Callable[[int, "TranscriptionSegment"], None]] = None,
 ) -> TranscriptionResult:
     units = plan_transcription_units(source_path, work_dir)
     all_segments: list[TranscriptionSegment] = []
@@ -93,6 +94,7 @@ def transcribe_file(
 
     model = _get_model()
     language = os.getenv("WHISPER_LANGUAGE") or None
+    seg_index = 0
 
     for index, unit in enumerate(units, start=1):
         segments, info = model.transcribe(str(unit.path), language=language)
@@ -102,14 +104,18 @@ def transcribe_file(
             if language is None:
                 language = detected_language
 
+        # `segments` es un generador perezoso: cada iteración transcribe el
+        # siguiente tramo, así que emitimos el segmento en cuanto está listo.
         for segment in segments:
-            all_segments.append(
-                TranscriptionSegment(
-                    start=float(segment.start) + unit.offset_seconds,
-                    end=float(segment.end) + unit.offset_seconds,
-                    text=segment.text.strip(),
-                )
+            transcription_segment = TranscriptionSegment(
+                start=float(segment.start) + unit.offset_seconds,
+                end=float(segment.end) + unit.offset_seconds,
+                text=segment.text.strip(),
             )
+            all_segments.append(transcription_segment)
+            if on_segment is not None:
+                on_segment(seg_index, transcription_segment)
+            seg_index += 1
 
         if on_unit_completed is not None:
             on_unit_completed(index, len(units))

@@ -1,30 +1,91 @@
-import os
+import asyncio
+import json
+import mimetypes
+from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from app.core.security import (
+    API_KEY_HEADER,
+    SESSION_COOKIE,
+    auth_enabled,
+    cookie_samesite,
+    cookie_secure,
+    cors_allow_origins,
+    create_session_token,
+    is_authenticated,
+    is_valid_api_key,
+    max_upload_bytes,
+    requires_auth,
+    session_ttl_seconds,
+)
 from app.services.storage import save_upload
-from app.services.jobs import create_job, get_job, list_jobs
+from app.services.jobs import create_job, get_job, list_jobs, update_job
 from app.services.housekeeping import cleanup_jobs, cleanup_temp, delete_job_artifacts, delete_local_file
+from app.services.cancellation import request_cancel
+from app.services.events import bus
+from app.services.files import delete_input_file, list_input_files, resolve_input_file
 from app.services.local_files import list_local_audio_files, resolve_local_audio_file
-from app.services.media import SUPPORTED_AUDIO_EXTENSIONS, get_configured_chunk_seconds
+from app.services.media import SUPPORTED_MEDIA_EXTENSIONS, get_configured_chunk_seconds
 from app.services.processor import process_job
 from app.ui import APP_HTML
 
-app = FastAPI(title="TranscripcionVideo")
-OUTPUT_DIR = Path("/code/data/output")
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 
+@asynccontextmanager
+async def lifespan(_app: "FastAPI"):
+    # Vincula el event loop al bus para poder publicar eventos desde el threadpool.
+    bus.bind_loop(asyncio.get_running_loop())
+    yield
+
+
+app = FastAPI(title="Transcriptor", lifespan=lifespan)
+OUTPUT_DIR = Path("/code/data/output")
+
+
+@app.middleware("http")
+async def auth_guard(request: Request, call_next):
+    """Exige sesión válida (cookie) o X-API-Key en /api/* cuando hay claves."""
+    if requires_auth(request.url.path, request.method):
+        authed = is_authenticated(
+            request.cookies.get(SESSION_COOKIE),
+            request.headers.get(API_KEY_HEADER),
+        )
+        if not authed:
+            return JSONResponse(
+                {"detail": "Autenticación requerida"},
+                status_code=401,
+                headers={"WWW-Authenticate": "ApiKey"},
+            )
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Cabeceras de endurecimiento en toda respuesta."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
+# CORS se añade de último para quedar como middleware más externo y resolver el
+# preflight antes de la autenticación. Sin credenciales (usamos header, no cookies).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN, "http://127.0.0.1:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_allow_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", API_KEY_HEADER],
+    max_age=600,
 )
 
 RESULT_FILES = {
@@ -44,14 +105,56 @@ class CleanupJobsRequest(BaseModel):
     delete_temp: bool = True
 
 
-@app.get("/")
-def root():
-    return {"status": "ok", "message": "Proyecto base funcionando"}
+@app.get("/api/health")
+def health():
+    """Health-check público. Indica si la API exige autenticación."""
+    return {"status": "ok", "auth_required": auth_enabled()}
+
+
+class LoginRequest(BaseModel):
+    api_key: str
+
+
+@app.post("/api/auth/login")
+def login(payload: LoginRequest):
+    """Canjea una API key válida por una cookie de sesión httpOnly."""
+    if not auth_enabled():
+        return {"ok": True, "authenticated": True, "auth_required": False}
+    if not is_valid_api_key(payload.api_key):
+        raise HTTPException(status_code=401, detail="API key inválida")
+    response = JSONResponse({"ok": True, "authenticated": True, "auth_required": True})
+    response.set_cookie(
+        SESSION_COOKIE,
+        create_session_token(),
+        max_age=session_ttl_seconds(),
+        httponly=True,
+        samesite=cookie_samesite(),
+        secure=cookie_secure(),
+        path="/",
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+def logout():
+    response = JSONResponse({"ok": True, "authenticated": False})
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
+
+
+@app.get("/api/auth/status")
+def auth_status(request: Request):
+    """Estado de autenticación de la sesión actual (público)."""
+    authed = is_authenticated(
+        request.cookies.get(SESSION_COOKIE),
+        request.headers.get(API_KEY_HEADER),
+    )
+    return {"auth_required": auth_enabled(), "authenticated": authed}
 
 @app.get("/api/config")
 def read_config():
     return {
-        "supported_extensions": sorted(SUPPORTED_AUDIO_EXTENSIONS),
+        "supported_extensions": sorted(SUPPORTED_MEDIA_EXTENSIONS),
         "chunk_seconds": get_configured_chunk_seconds(),
     }
 
@@ -66,7 +169,7 @@ async def upload_file(
     persist_input: bool = Form(True),
 ):
     try:
-        saved = save_upload(file)
+        saved = save_upload(file, max_bytes=max_upload_bytes())
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -215,3 +318,150 @@ async def download_job_result(job_id: str, kind: str):
         media_type=media_type,
         filename=path.name,
     )
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _job_snapshot(job: dict) -> dict:
+    result = job.get("result") or {}
+    raw = result.get("segments")
+    if raw:
+        segments = [{"index": index, **segment} for index, segment in enumerate(raw)]
+    else:
+        segments = job.get("partial_segments") or []
+    return {
+        "status": job.get("status"),
+        "progress": job.get("progress", 0),
+        "stage": job.get("stage"),
+        "message": job.get("message"),
+        "segments": segments,
+    }
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str):
+    """Solicita la cancelación cooperativa de un job en proceso."""
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+    if job.get("status") not in ("uploaded", "processing"):
+        raise HTTPException(status_code=409, detail="El job no está en proceso")
+
+    request_cancel(job_id)
+    update_job(job_id, message="Cancelando…")
+    bus.publish(
+        job_id,
+        {"type": "progress", "stage": job.get("stage"), "message": "Cancelando…", "progress": job.get("progress", 0)},
+    )
+    return {"job_id": job_id, "cancel_requested": True}
+
+
+@app.get("/api/jobs/{job_id}/stream")
+async def stream_job(job_id: str, request: Request):
+    """Stream SSE del progreso y los segmentos de un job en tiempo real."""
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job no encontrado")
+
+    queue = bus.subscribe(job_id)
+
+    async def event_stream():
+        try:
+            # Snapshot inicial: estado + segmentos ya disponibles (catch-up). El
+            # cliente deduplica por índice, así que un solape con eventos en vivo
+            # es inofensivo.
+            snapshot = _job_snapshot(get_job(job_id) or job)
+            yield _sse("state", snapshot)
+            if snapshot["status"] in ("completed", "failed"):
+                yield _sse("done", {"status": snapshot["status"]})
+                return
+
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                event_type = event.get("type", "message")
+                yield _sse(event_type, event)
+                if event_type in ("done", "failed", "cancelled"):
+                    break
+        finally:
+            bus.unsubscribe(job_id, queue)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+# --- Gestor de archivos de entrada ---------------------------------------------
+
+@app.get("/api/files")
+async def read_files():
+    return list_input_files()
+
+
+@app.get("/api/files/content")
+async def read_file_content(source: str, ref: str, disposition: str = Query("inline")):
+    try:
+        path = resolve_input_file(source, ref)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    media_type, _ = mimetypes.guess_type(path.name)
+    download_name = ref.split("__", 1)[1] if source == "upload" and "__" in ref else ref
+    return FileResponse(
+        path,
+        media_type=media_type or "application/octet-stream",
+        filename=download_name,
+        content_disposition_type="attachment" if disposition == "attachment" else "inline",
+    )
+
+
+@app.delete("/api/files")
+async def remove_file(source: str, ref: str):
+    try:
+        return delete_input_file(source, ref)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+# --- Frontend SPA (servido same-origin desde el backend) -----------------------
+
+DIST_DIR = Path("/code/frontend/dist")
+
+if (DIST_DIR / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(DIST_DIR / "assets")), name="assets")
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa(full_path: str):
+    """Sirve el build del frontend; rutas desconocidas caen a index.html (SPA)."""
+    if full_path == "api" or full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="No encontrado")
+
+    if full_path:
+        candidate = (DIST_DIR / full_path).resolve()
+        dist_root = DIST_DIR.resolve()
+        if (dist_root == candidate or dist_root in candidate.parents) and candidate.is_file():
+            return FileResponse(candidate)
+
+    index = DIST_DIR / "index.html"
+    if index.exists():
+        return FileResponse(index, media_type="text/html")
+
+    raise HTTPException(status_code=404, detail="Frontend no construido. Ejecuta: pnpm --dir frontend build")

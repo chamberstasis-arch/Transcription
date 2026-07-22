@@ -7,7 +7,12 @@ from pathlib import Path
 from typing import Optional
 
 
-SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".ogg", ".wav"}
+SUPPORTED_MEDIA_EXTENSIONS = {
+    # audio
+    ".mp3", ".ogg", ".wav", ".m4a", ".flac", ".aac",
+    # vídeo (se extrae la pista de audio con ffmpeg -vn)
+    ".mp4", ".mov", ".mkv", ".webm", ".avi",
+}
 DEFAULT_CHUNK_SECONDS = 600
 
 
@@ -36,11 +41,11 @@ class MediaInfo:
     will_chunk: bool
 
 
-def validate_supported_audio_file(filename: str | Path) -> None:
+def validate_supported_media_file(filename: str | Path) -> None:
     extension = Path(filename).suffix.lower()
 
-    if extension not in SUPPORTED_AUDIO_EXTENSIONS:
-        supported = ", ".join(sorted(SUPPORTED_AUDIO_EXTENSIONS))
+    if extension not in SUPPORTED_MEDIA_EXTENSIONS:
+        supported = ", ".join(sorted(SUPPORTED_MEDIA_EXTENSIONS))
         raise ValueError(f"Formato no soportado: {extension or 'sin extensión'}. Usa: {supported}")
 
 
@@ -67,7 +72,7 @@ def inspect_media_file(source_path: str | Path, chunk_seconds: int) -> MediaInfo
     if not source.exists():
         raise FileNotFoundError(f"Archivo no encontrado: {source}")
 
-    validate_supported_audio_file(source)
+    validate_supported_media_file(source)
 
     duration = probe_duration_seconds(source)
     estimated_chunks = 1
@@ -92,7 +97,10 @@ def prepare_audio_for_transcription(source_path: str | Path, work_dir: str | Pat
     if not source.exists():
         raise FileNotFoundError(f"Archivo no encontrado: {source}")
 
-    validate_supported_audio_file(source)
+    validate_supported_media_file(source)
+
+    if not has_audio_stream(source):
+        raise ValueError("El archivo no contiene pista de audio")
 
     target_dir = Path(work_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -173,6 +181,33 @@ def probe_duration_seconds(source_path: str | Path) -> Optional[float]:
         return None
 
     return float(duration)
+
+
+def has_audio_stream(source_path: str | Path) -> bool:
+    """True si el archivo tiene al menos una pista de audio (vía ffprobe).
+
+    Útil para vídeos sin audio: evita producir un WAV vacío y permite fallar con
+    un mensaje claro.
+    """
+    command = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "a",
+        "-show_entries",
+        "stream=codec_type",
+        "-of",
+        "csv=p=0",
+        str(source_path),
+    ]
+
+    try:
+        completed = _run_command(command, "No se pudo inspeccionar el archivo")
+    except RuntimeError:
+        return False
+
+    return "audio" in (completed.stdout or "")
 
 
 def _run_ffmpeg_audio_normalization(source: Path, target: Path) -> None:

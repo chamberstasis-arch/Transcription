@@ -27,19 +27,29 @@ if [[ ! -f .env && -f .env.example ]]; then
   echo "Creado .env desde .env.example"
 fi
 
-echo "Levantando backend en http://localhost:8000 ..."
-docker compose up -d --build
-
+# Prepara y construye el frontend ANTES de levantar el backend: el contenedor
+# monta frontend/dist y sirve la app same-origin en el mismo puerto que la API.
 echo "Preparando frontend ..."
 cd "$ROOT_DIR/frontend"
 if [[ ! -f .env && -f .env.example ]]; then
   cp .env.example .env
   echo "Creado frontend/.env desde frontend/.env.example"
 fi
-
 if [[ ! -d node_modules ]]; then
   pnpm install
 fi
+echo "Construyendo frontend (servido por el backend) ..."
+pnpm build
 
-echo "Frontend en http://localhost:5173"
+cd "$ROOT_DIR"
+echo "Levantando backend ..."
+docker compose up -d --build
+
+PORT="${API_PORT:-8000}"
+echo
+echo "Aplicación (front + API) en:   http://localhost:${PORT}"
+echo "Servidor de desarrollo (HMR):  http://localhost:5173"
+echo
+
+cd "$ROOT_DIR/frontend"
 pnpm dev --host 0.0.0.0

@@ -1,4 +1,4 @@
-export type JobStatus = "uploaded" | "processing" | "completed" | "failed";
+export type JobStatus = "uploaded" | "processing" | "completed" | "failed" | "cancelled";
 export type JobSource = "upload" | "local";
 
 export interface Segment {
@@ -67,6 +67,43 @@ export interface LocalFile {
 export interface ApiConfig {
   supported_extensions: string[];
   chunk_seconds: number;
+}
+
+export interface AuthStatus {
+  auth_required: boolean;
+  authenticated: boolean;
+}
+
+export interface StreamSegment {
+  index: number;
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface StreamState {
+  status?: JobStatus;
+  progress: number;
+  stage?: string;
+  message?: string;
+  segments: StreamSegment[];
+}
+
+export interface StreamProgress {
+  progress: number;
+  stage?: string;
+  message?: string;
+}
+
+export interface ServerFile {
+  source: "local" | "upload";
+  ref: string;
+  name: string;
+  ext: string;
+  media_type: string;
+  kind: "audio" | "video" | "other";
+  size_bytes: number;
+  modified_at: string;
 }
 
 export interface CleanupResponse {

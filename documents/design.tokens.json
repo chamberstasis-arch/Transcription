@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-20",
+  "title": "Design System: Arbolista",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Electric Lime",
+        "canonical": "oklch(91% 0.20 122)",
+        "tonalRamp": ["oklch(40% 0.10 122)", "oklch(50% 0.13 122)", "oklch(60% 0.16 122)", "oklch(70% 0.18 122)", "oklch(76% 0.18 124)", "oklch(85% 0.19 122)", "oklch(91% 0.20 122)", "oklch(95% 0.16 122)"]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Void",
+        "canonical": "oklch(16% 0.02 262)",
+        "tonalRamp": ["oklch(16% 0.02 262)", "oklch(20% 0.025 262)", "oklch(25% 0.03 262)", "oklch(31% 0.035 262)", "oklch(40% 0.035 262)", "oklch(57% 0.035 262)", "oklch(77% 0.02 262)", "oklch(93% 0.008 262)"]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "oklch(20% 0.025 262)",
+        "tonalRamp": ["oklch(16% 0.02 262)", "oklch(20% 0.025 262)", "oklch(22% 0.028 262)", "oklch(25% 0.03 262)", "oklch(29% 0.03 262)", "oklch(35% 0.035 262)", "oklch(57% 0.035 262)", "oklch(93% 0.008 262)"]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(93% 0.008 262)",
+        "tonalRamp": ["oklch(31% 0.035 262)", "oklch(40% 0.035 262)", "oklch(50% 0.035 262)", "oklch(57% 0.035 262)", "oklch(67% 0.03 262)", "oklch(77% 0.02 262)", "oklch(85% 0.012 262)", "oklch(93% 0.008 262)"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "canonical": "oklch(57% 0.035 262)",
+        "tonalRamp": ["oklch(31% 0.035 262)", "oklch(40% 0.035 262)", "oklch(48% 0.035 262)", "oklch(57% 0.035 262)", "oklch(64% 0.03 262)", "oklch(72% 0.025 262)", "oklch(80% 0.018 262)", "oklch(90% 0.01 262)"]
+      },
+      "danger": {
+        "role": "status",
+        "displayName": "Danger Rose",
+        "canonical": "oklch(72% 0.16 12)",
+        "tonalRamp": ["oklch(35% 0.08 12)", "oklch(45% 0.12 12)", "oklch(55% 0.14 12)", "oklch(62% 0.15 12)", "oklch(72% 0.16 12)", "oklch(80% 0.13 12)", "oklch(88% 0.09 12)", "oklch(94% 0.05 12)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Product name only. Heavy display grotesque." },
+      "title": { "displayName": "Title", "purpose": "Canvas and panel titles." },
+      "body": { "displayName": "Body", "purpose": "Default reading voice: node labels, buttons, inputs, settings." },
+      "label": { "displayName": "Section Label", "purpose": "Uppercase mono right-rail section headers." },
+      "overline": { "displayName": "Overline", "purpose": "Wide-tracked mono eyebrow tag (CANVAS)." },
+      "mono": { "displayName": "Mono Data", "purpose": "Counts, depths, tabs, JSON, hex, hints." }
+    },
+    "shadows": [
+      { "name": "board", "value": "0 18px 40px -24px rgba(0,0,0,0.8)", "purpose": "Resting lift for the two large work boards (canvas, panes)." },
+      { "name": "popover", "value": "0 20px 50px -18px rgba(0,0,0,0.85)", "purpose": "Stronger lift for transient floating layers (color/style popover)." },
+      { "name": "accent-glow", "value": "0 6px 18px -6px rgba(200,247,80,0.6)", "purpose": "Lime emission under the brand mark only." },
+      { "name": "selected-ring", "value": "inset 0 0 0 1px rgba(200,247,80,0.35)", "purpose": "Inset lime ring for selected node and focused pane." },
+      { "name": "focus-ring", "value": "0 0 0 2px #c8f750", "purpose": "Keyboard focus (expressed as outline: 2px solid accent, offset 1px)." }
+    ],
+    "motion": [
+      { "name": "control", "value": "0.13s ease", "purpose": "Default state transition for buttons, swatches, toggles (background/color/border)." },
+      { "name": "reveal", "value": "0.15s ease", "purpose": "Hover reveals: grip, row actions, chevron rotation." },
+      { "name": "pop", "value": "0.12s ease", "purpose": "Popover entrance (opacity + 4px translateY)." },
+      { "name": "switch-knob", "value": "0.2s cubic-bezier(0.34, 1.56, 0.64, 1)", "purpose": "The only spring in the system: the switch knob travel." }
+    ],
+    "breakpoints": [
+      { "name": "stack", "value": "920px", "purpose": "Below this, the canvas + right rail collapse from side-by-side to a single scrolling column." }
+    ],
+    "layout": {
+      "shell": "Full-height flex column: header (fixed) + tab bar (fixed) + main (grid: minmax(0,1fr) canvas area / 384px right rail, 18px gap, 18px padding).",
+      "panes": "The canvas area is a flex container; single fills, vertical split = row, horizontal split = column, 18px gap.",
+      "indent": "Tree indentation is 22px per level; row height 42px.",
+      "rightRail": "384px fixed column of bordered sections, 14px vertical gaps, independently scrolling."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Dominant action, one per context (add root node, apply import).",
+      "html": "<button class=\"ds-btn-primary\">Nodo raíz</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 13px; font-weight: 600; color: #0a0d13; background: #c8f750; border: 1px solid #c8f750; border-radius: 8px; cursor: pointer; transition: background 0.14s ease; } .ds-btn-primary:hover { background: #d4ff63; } .ds-btn-primary:focus-visible { outline: 2px solid #c8f750; outline-offset: 1px; }"
+    },
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Secondary action: elevated fill, hairline border, dim text.",
+      "html": "<button class=\"ds-btn\">Descargar</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 12px; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 13px; font-weight: 600; color: #aeb8c8; background: #19212f; border: 1px solid #232b3b; border-radius: 8px; cursor: pointer; transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease; } .ds-btn:hover { background: #1f2838; color: #e7ebf2; border-color: #2d384c; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action (delete, clear). Translucent danger wash.",
+      "html": "<button class=\"ds-btn-danger\">Vaciar todo</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 13px; font-weight: 600; color: #fb7185; background: rgba(251,113,133,0.08); border: 1px solid #5a2b35; border-radius: 8px; cursor: pointer; transition: background 0.14s ease; } .ds-btn-danger:hover { background: rgba(251,113,133,0.16); }"
+    },
+    {
+      "name": "Metadata Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Read-only mono badge for counts and depths.",
+      "html": "<span class=\"ds-chip\">12 nodos</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: #aeb8c8; background: #19212f; border: 1px solid #232b3b; border-radius: 99px; white-space: nowrap; }"
+    },
+    {
+      "name": "Recessed Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Data-entry field cut into the surface; lime border on focus.",
+      "html": "<input class=\"ds-input\" value=\"Plataforma\" />",
+      "css": ".ds-input { height: 36px; padding: 0 11px; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 14px; color: #e7ebf2; background: #0a0d13; border: 1px solid #232b3b; border-radius: 8px; outline: none; transition: border-color 0.13s ease; } .ds-input:focus { border-color: #c8f750; }"
+    },
+    {
+      "name": "Active Tab",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Folder tab with lime icon and bottom lime underline when active.",
+      "html": "<div class=\"ds-tab\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#c8f750\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 2 L5 12 h4 l-3 5 h12 l-3 -5 h4 Z\"/><path d=\"M12 17 v5\"/></svg><span class=\"ds-tab__name\">Árbol 1</span></div>",
+      "css": ".ds-tab { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 8px 0 11px; background: #141a26; color: #e7ebf2; border: 1px solid #2d384c; border-bottom: none; border-radius: 9px 9px 0 0; cursor: pointer; } .ds-tab__name { font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 13px; font-weight: 600; } .ds-tab::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: #c8f750; }"
+    },
+    {
+      "name": "Toggle Switch",
+      "kind": "custom",
+      "refersTo": "switch",
+      "description": "On-state uses a lime wash, lime border and lime knob with a slight overshoot.",
+      "html": "<button class=\"ds-switch ds-switch--on\" role=\"switch\" aria-checked=\"true\"><span class=\"ds-switch__knob\"></span></button>",
+      "css": ".ds-switch { position: relative; width: 44px; height: 26px; border-radius: 99px; background: #19212f; border: 1px solid #232b3b; cursor: pointer; } .ds-switch__knob { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #71809a; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.18s ease; } .ds-switch--on { background: rgba(200,247,80,0.2); border-color: #c8f750; } .ds-switch--on .ds-switch__knob { transform: translateX(18px); background: #c8f750; }"
+    },
+    {
+      "name": "Tree Node Row (selected)",
+      "kind": "custom",
+      "refersTo": "node-row-selected",
+      "description": "Selected node: lime tint + inset lime ring, color dot, rotating chevron, mono count.",
+      "html": "<div class=\"ds-node ds-node--selected\"><svg class=\"ds-node__chev\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#aeb8c8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 18l6-6-6-6\"/></svg><span class=\"ds-node__dot\"></span><span class=\"ds-node__label\">Plataforma</span><span class=\"ds-node__count\">2</span></div>",
+      "css": ".ds-node { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 8px 0 12px; border-radius: 8px; background: rgba(200,247,80,0.08); box-shadow: inset 0 0 0 1px rgba(200,247,80,0.35); } .ds-node__chev { transform: rotate(90deg); transition: transform 0.15s ease; } .ds-node__dot { width: 9px; height: 9px; border-radius: 50%; background: #a3e635; box-shadow: 0 0 0 1px rgba(255,255,255,0.06); } .ds-node__label { font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 500; color: #e7ebf2; } .ds-node__count { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; color: #71809a; background: #19212f; border: 1px solid #232b3b; border-radius: 99px; padding: 1px 7px; }"
+    },
+    {
+      "name": "Color Swatch (active)",
+      "kind": "custom",
+      "refersTo": "swatch",
+      "description": "Square swatch in a 7-column grid; active shows a 2px ink ring.",
+      "html": "<div class=\"ds-swatch ds-swatch--active\"></div>",
+      "css": ".ds-swatch { position: relative; width: 26px; height: 26px; border-radius: 6px; background: #38bdf8; border: 1px solid rgba(255,255,255,0.14); cursor: pointer; transition: transform 0.12s ease; } .ds-swatch:hover { transform: scale(1.12); } .ds-swatch--active::after { content: ''; position: absolute; inset: -2px; border-radius: 8px; border: 2px solid #e7ebf2; }"
+    },
+    {
+      "name": "Rail Section Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat bordered work surface in the right rail; no shadow.",
+      "html": "<section class=\"ds-card\"><h3 class=\"ds-card__head\">Ajustes</h3></section>",
+      "css": ".ds-card { background: #11151e; border: 1px solid #232b3b; border-radius: 12px; padding: 14px; } .ds-card__head { margin: 0; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #71809a; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Blueprint Terminal",
+    "overview": "Arbolista looks like an architect's drafting table rendered in a terminal: a deep blue-black field overlaid with a faint 26px graph-paper grid and one cold-lime glow from the top-right corner. Structure is the subject; lime ink is the cursor, marking only what is live (focused panel, selected node, active tab, primary action). Monospace carries every machine-fact while two grotesques carry the human voice. Density is IDE-high but rhythm is deliberate, and the accent is rationed so the eye always knows where the work is.",
+    "keyCharacteristics": [
+      "Dark blueprint surface: navy-graphite neutrals plus a faint dot/line grid and one corner glow.",
+      "Exactly one accent (electric lime) used as a live-state cursor on ~10% of any screen.",
+      "Tri-typographic: heavy display grotesque, humanist body grotesque, monospace for all data and labels.",
+      "Full borders and tonal layering for depth; shadows reserved for floating surfaces.",
+      "High density organized into bordered work surfaces (canvas + right rail), never loose floating cards."
+    ],
+    "rules": [
+      { "name": "The One Cursor Rule", "body": "Lime is a cursor, not a color scheme. At most ~10% of any screen, always meaning 'this is live or this is the primary action.'", "section": "colors" },
+      { "name": "The Blueprint Grid Rule", "body": "Page background is a fixed top-right radial lime glow at 8% over Void plus two 1px white grids at 2.2% on a 26px pitch. Panels sit on the grid as solid boards; they never repeat it.", "section": "colors" },
+      { "name": "The Tinted Neutral Rule", "body": "No #000, no #fff. Every neutral is tinted toward the blueprint hue (~OKLCH hue 262, chroma 0.02 to 0.035).", "section": "colors" },
+      { "name": "The Machine-Voice Rule", "body": "Numbers, code, status, keys, counts and structural labels are JetBrains Mono, often uppercase with wide tracking. Language is Hanken Grotesk. Never blur the two.", "section": "typography" },
+      { "name": "The Rare Display Rule", "body": "Bricolage Grotesque appears only at the two title altitudes (product name, panel title).", "section": "typography" },
+      { "name": "The Layer-Not-Lift Rule", "body": "Reach for a lighter neutral and a hairline border before a shadow. Shadows belong to the two big boards and to transient popovers.", "section": "elevation" },
+      { "name": "The Single Glow Rule", "body": "The only colored shadow is the lime glow under the brand mark.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep lime to ~10% of any screen, only on live state and the single primary action.",
+      "Do print every number, code fragment, status line, tab label and section header in JetBrains Mono, usually uppercase with 0.14 to 0.22em tracking.",
+      "Do build depth by climbing the tonal ramp (Void to Panel to Panel Raised to Elevated) with 1px hairline borders before considering a shadow.",
+      "Do recess data-entry surfaces to Void fill and shift their border to lime on focus.",
+      "Do keep the fixed blueprint background on the page floor only, with solid panels on top.",
+      "Do print dark Accent Ink text on every lime fill.",
+      "Do reveal row controls on hover and for the selected state, keeping the resting row quiet."
+    ],
+    "donts": [
+      "Don't introduce a second accent hue; one lime, full stop (user-assigned node colors are data, the only place other hues appear).",
+      "Don't use #000 or #fff; every neutral is tinted toward the blueprint hue.",
+      "Don't ship the generic AI-tool look: purple-to-blue gradients on white, neon-on-black crypto sheen, the hero-metric template, or grids of identical icon-heading-text cards.",
+      "Don't spread glassmorphism; the only backdrop-filter blur is the sticky header, panels and popovers are solid.",
+      "Don't use background-clip: text gradient text; emphasis comes from weight, size and the lime fill.",
+      "Don't add a colored border-left or border-right greater than 1px as a decorative stripe; the node row's 2px color tick is the only exception because it encodes data.",
+      "Don't drop-shadow buttons, chips, inputs, rows or rail sections.",
+      "Don't reach for a modal; edit inline and render errors as a line under the field."
+    ]
+  }
+}

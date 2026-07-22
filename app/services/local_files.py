@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from app.services.media import SUPPORTED_AUDIO_EXTENSIONS, get_configured_chunk_seconds, inspect_media_file
+from app.services.media import SUPPORTED_MEDIA_EXTENSIONS, get_configured_chunk_seconds, inspect_media_file
 
 
 LOCAL_MEDIA_DIR = Path(os.getenv("LOCAL_MEDIA_DIR", "/code/audio_test"))
@@ -15,7 +15,7 @@ def list_local_audio_files() -> list[dict]:
     chunk_seconds = get_configured_chunk_seconds()
 
     for path in sorted(LOCAL_MEDIA_DIR.iterdir()):
-        if not path.is_file() or path.suffix.lower() not in SUPPORTED_AUDIO_EXTENSIONS:
+        if not path.is_file() or path.suffix.lower() not in SUPPORTED_MEDIA_EXTENSIONS:
             continue
 
         media_info = _safe_media_info(path, chunk_seconds)
@@ -50,7 +50,7 @@ def resolve_local_audio_file(relative_path: str) -> Path:
     if not path.exists() or not path.is_file():
         raise FileNotFoundError(f"Archivo local no encontrado: {relative_path}")
 
-    if path.suffix.lower() not in SUPPORTED_AUDIO_EXTENSIONS:
+    if path.suffix.lower() not in SUPPORTED_MEDIA_EXTENSIONS:
         raise ValueError("Formato local no soportado")
 
     return path

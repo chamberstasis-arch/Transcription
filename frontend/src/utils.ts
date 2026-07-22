@@ -38,20 +38,39 @@ export function formatTimestamp(value?: number | null): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
 }
 
+export function formatDate(value?: string | null): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function statusLabel(status?: JobStatus): string {
   const labels: Record<JobStatus, string> = {
     uploaded: "En cola",
     processing: "Procesando",
     completed: "Completado",
     failed: "Falló",
+    cancelled: "Cancelado",
   };
 
   return status ? labels[status] : "Idle";
 }
 
+/**
+ * Status pill modifier. Lime is the live-state cursor: reserved for the active
+ * job (processing) and the "applied" confirmation (completed). Everything else
+ * stays neutral, and failures take danger rose.
+ */
 export function statusClass(status?: JobStatus): string {
-  if (status === "completed") return "border-emerald-300 bg-emerald-50 text-emerald-700";
-  if (status === "processing" || status === "uploaded") return "border-cyan-300 bg-cyan-50 text-cyan-800";
-  if (status === "failed") return "border-rose-300 bg-rose-50 text-rose-700";
-  return "border-slate-200 bg-white/70 text-slate-600";
+  if (status === "processing") return "pill--live";
+  if (status === "completed") return "pill--done";
+  if (status === "failed") return "pill--fail";
+  return "";
 }

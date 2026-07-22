@@ -58,6 +58,7 @@ docker compose build --pull
 echo "Levantando backend actualizado ..."
 docker compose up -d
 
+PORT="${API_PORT:-8000}"
 echo "Entorno actualizado."
-echo "Backend:  http://localhost:8000"
-echo "Frontend: ejecuta 'cd frontend && pnpm dev --host 0.0.0.0'"
+echo "Aplicación (front + API) servida en: http://localhost:${PORT}"
+echo "Para desarrollo con recarga en caliente: bash scripts/start.sh"
